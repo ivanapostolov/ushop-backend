@@ -8,7 +8,7 @@ const pool = new Pool({
     port: "5432"
 });
 
-const sendDBQuery = async(query) => {
+const sendDBQuery = async (query) => {
     try {
         return await pool.query(query);
     } catch (e) {
@@ -179,7 +179,9 @@ class Databse {
 
     async insert(name, values) {
         try {
-            const sql = `INSERT INTO ${name} VALUES(${values.map((e, i) => '$' + (i + 1)).reduce((a, b) => a + ', ' + b)});`;
+            const columns = this.tables.find(e => e.name === name).columns;
+
+            const sql = `INSERT INTO ${name} VALUES(${values.map((e, i) => (columns[i].type === 'SERIAL' ? 'DEFAULT, ' : '') + '$' + (i + 1)).reduce((a, b) => a + ', ' + b)}) RETURNING *;`;
 
             return await sendDBQuery({ text: sql, values: values });
         } catch (e) {
@@ -200,18 +202,6 @@ class Databse {
             return await sendDBQuery(Array.isArray(conditions) ? { text: sql, values: conditions.map(e => Object.values(e)[0]) } : sql);
         } else {
             console.log({ err: "Error occured while selecting from databse" });
-        }
-    }
-
-    async doesAdminExist() {
-        const sql = `SELECT COUNT(1) FROM Users WHERE Email = 'user@admin.com'`;
-
-        try {
-            const result = await sendDBQuery(sql);
-
-            return result.rows[0].count != 0;
-        } catch (e) {
-            throw new Error(e.message);
         }
     }
 
